@@ -16,9 +16,40 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "data.h"
+#include "convert_c.h"
 
 
 int main(int argc, char** argv) {
-    printf("hello, world\n");
+    const int width = 1920;
+
+    uint8_t *DATA_LINE_PEF = malloc(size_pef(width));
+    uint16_t *result_10p2 = malloc(size_10p2(width));
+
+    convert_c_10p2_pef10(DATA_LINE_PEF, DATA_LINE_10P2, width);
+    convert_c_pef10_10p2(result_10p2, DATA_LINE_PEF, width);
+
+    if (memcmp(DATA_LINE_10P2, result_10p2, size_10p2(width)) == 0) {
+        printf("[OK]    Conversion matches expected value\n");
+    } else {
+        printf("[ERROR] Conversion does not match expected value!\n");
+        printf("expected: ");
+        for (int i=0; i < 16; i++) {
+            printf("0x%03x ", DATA_LINE_10P2[i]);
+        }
+        printf("\n");
+        printf("actual  : ");
+        for (int i=0; i < 16; i++) {
+            printf("0x%03x ", result_10p2[i]);
+        }
+        printf("\n");
+        return 1;
+    }
+
+    free(result_10p2);
+    free(DATA_LINE_PEF);
     return 0;
 }

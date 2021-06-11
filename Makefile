@@ -16,7 +16,7 @@ SOURCES=$(wildcard src/*.c)
 HEADERS=$(wildcard src/*.h)
 OBJS=$(patsubst %.c,%.o,${SOURCES})
 
-CFLAGS=
+CFLAGS=-g
 LDFLAGS=
 
 all: pef-test
