@@ -18,6 +18,8 @@
  #include "convert_c.h"
  #include <x86intrin.h>
 
+#define OP(C) (C);ops++
+
 
 /*
  *   This routine. Per 64 sample block:
@@ -33,7 +35,8 @@
  *
  *     == 42 non-memory operations per 8 loads/5 stores
  */
-void convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
+int convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
+    int ops = 0;
     const size_t offs = ((n + 63)/64)*16;
     const uint8_t *dst8 = &dst[offs];
 
@@ -55,56 +58,15 @@ void convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
                 __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
                 __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
 
-                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
-                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
+                __m128i lob01 = OP(_mm_and_si128(first_eight, LSB_MASK));
+                __m128i lob89 = OP(_mm_and_si128(second_eight, LSB_MASK));
 
-                lob0 = _mm_packus_epi16(lob01, lob89);
-                lob0 = _mm_shuffle_epi8(lob0, SHUF_MASK);
+                lob0 = OP(_mm_packus_epi16(lob01, lob89));
+                lob0 = OP(_mm_shuffle_epi8(lob0, SHUF_MASK));
 
-                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
-                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
-                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
-
-                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
-            }
-
-            j++;
-
-            {
-                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
-                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
-
-                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
-                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
-
-                lob1 = _mm_packus_epi16(lob01, lob89);
-                lob1 = _mm_shuffle_epi8(lob1, SHUF_MASK);
-
-                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
-                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
-                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
-
-                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
-            }
-
-            __m128i lobA = _mm_unpacklo_epi32(lob0, lob1);
-            __m128i lobB = _mm_unpackhi_epi32(lob0, lob1);
-
-            j++;
-
-            {
-                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
-                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
-
-                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
-                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
-
-                lob2 = _mm_packus_epi16(lob01, lob89);
-                lob2 = _mm_shuffle_epi8(lob2, SHUF_MASK);
-
-                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
-                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
-                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
+                __m128i first_eight_hob = OP(_mm_srli_epi16(first_eight, 2));
+                __m128i second_eight_hob = OP(_mm_srli_epi16(second_eight, 2));
+                __m128i hob = OP(_mm_packus_epi16(first_eight_hob, second_eight_hob));
 
                 _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
             }
@@ -115,35 +77,80 @@ void convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
                 __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
                 __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
 
-                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
-                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
+                __m128i lob01 = OP(_mm_and_si128(first_eight, LSB_MASK));
+                __m128i lob89 = OP(_mm_and_si128(second_eight, LSB_MASK));
 
-                lob3 = _mm_packus_epi16(lob01, lob89);
-                lob3 = _mm_shuffle_epi8(lob3, SHUF_MASK);
+                lob1 = OP(_mm_packus_epi16(lob01, lob89));
+                lob1 = OP(_mm_shuffle_epi8(lob1, SHUF_MASK));
 
-                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
-                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
-                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
+                __m128i first_eight_hob = OP(_mm_srli_epi16(first_eight, 2));
+                __m128i second_eight_hob = OP(_mm_srli_epi16(second_eight, 2));
+                __m128i hob = OP(_mm_packus_epi16(first_eight_hob, second_eight_hob));
 
                 _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
             }
 
-            __m128i lobC = _mm_unpacklo_epi32(lob2, lob3);
-            __m128i lobD = _mm_unpackhi_epi32(lob2, lob3);
+            __m128i lobA = OP(_mm_unpacklo_epi32(lob0, lob1));
+            __m128i lobB = OP(_mm_unpackhi_epi32(lob0, lob1));
 
-            lob0 = _mm_unpacklo_epi64(lobA, lobC);
-            lob1 = _mm_unpacklo_epi64(lobB, lobD);
-            lob2 = _mm_unpackhi_epi64(lobA, lobC);
-            lob3 = _mm_unpackhi_epi64(lobB, lobD);
+            j++;
 
-            lob0 = _mm_slli_epi16(lob0, 6);
-            lob1 = _mm_slli_epi16(lob1, 4);
-            lob2 = _mm_slli_epi16(lob2, 2);
+            {
+                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
+                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
 
-            __m128i lob = _mm_or_si128(_mm_or_si128(lob0, lob1), _mm_or_si128(lob2, lob3));
+                __m128i lob01 = OP(_mm_and_si128(first_eight, LSB_MASK));
+                __m128i lob89 = OP(_mm_and_si128(second_eight, LSB_MASK));
+
+                lob2 = OP(_mm_packus_epi16(lob01, lob89));
+                lob2 = OP(_mm_shuffle_epi8(lob2, SHUF_MASK));
+
+                __m128i first_eight_hob = OP(_mm_srli_epi16(first_eight, 2));
+                __m128i second_eight_hob = OP(_mm_srli_epi16(second_eight, 2));
+                __m128i hob = OP(_mm_packus_epi16(first_eight_hob, second_eight_hob));
+
+                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
+            }
+
+            j++;
+
+            {
+                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
+                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
+
+                __m128i lob01 = OP(_mm_and_si128(first_eight, LSB_MASK));
+                __m128i lob89 = OP(_mm_and_si128(second_eight, LSB_MASK));
+
+                lob3 = OP(_mm_packus_epi16(lob01, lob89));
+                lob3 = OP(_mm_shuffle_epi8(lob3, SHUF_MASK));
+
+                __m128i first_eight_hob = OP(_mm_srli_epi16(first_eight, 2));
+                __m128i second_eight_hob = OP(_mm_srli_epi16(second_eight, 2));
+                __m128i hob = OP(_mm_packus_epi16(first_eight_hob, second_eight_hob));
+
+                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
+            }
+
+            __m128i lobC = OP(_mm_unpacklo_epi32(lob2, lob3));
+            __m128i lobD = OP(_mm_unpackhi_epi32(lob2, lob3));
+
+            lob0 = OP(_mm_unpacklo_epi64(lobA, lobC));
+            lob1 = OP(_mm_unpacklo_epi64(lobB, lobD));
+            lob2 = OP(_mm_unpackhi_epi64(lobA, lobC));
+            lob3 = OP(_mm_unpackhi_epi64(lobB, lobD));
+
+            lob0 = OP(_mm_slli_epi16(lob0, 6));
+            lob1 = OP(_mm_slli_epi16(lob1, 4));
+            lob2 = OP(_mm_slli_epi16(lob2, 2));
+
+            lobA = OP(_mm_or_si128(lob0, lob1));
+            lobB = OP(_mm_or_si128(lob2, lob3));
+            __m128i lob = OP(_mm_or_si128(lobA, lobB));
             _mm_store_si128((__m128i *)&dst[i*16], lob);
         }
     }
+
+    return ops;
 }
 
 /*
@@ -159,7 +166,8 @@ void convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
  *     == 36 non-memory operations per 5 loads/8 stores
  */
 
-void convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
+int convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
+    int ops = 0;
     const size_t offs = ((n + 63)/64)*16;
     const uint8_t *src8 = &src[offs];
 
@@ -183,23 +191,25 @@ void convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
         for (int j = 0; j < 4; j++) {
             __m128i high_order_bits = _mm_load_si128((__m128i *)&src8[i*64 + j*16]);
 
-            __m128i lob = _mm_shuffle_epi8(low_order_bits, SHUF_CTRL);
-            __m128i lob_even = _mm_mullo_epi16(lob, MUL_SHIFT);
-            __m128i lob_odd = _mm_slli_epi16(lob, 2);
-            lob_odd = _mm_mullo_epi16(lob_odd, MUL_SHIFT);
-            lob_even = _mm_bsrli_si128(lob_even, 1);
-            lob = _mm_or_si128(lob_odd, lob_even);
-            low_order_bits = _mm_bsrli_si128(low_order_bits, 4);
+            __m128i lob = OP(_mm_shuffle_epi8(low_order_bits, SHUF_CTRL));
+            __m128i lob_even = OP(_mm_mullo_epi16(lob, MUL_SHIFT));
+            __m128i lob_odd = OP(_mm_slli_epi16(lob, 2));
+            lob_odd = OP(_mm_mullo_epi16(lob_odd, MUL_SHIFT));
+            lob_even = OP(_mm_bsrli_si128(lob_even, 1));
+            lob = OP(_mm_or_si128(lob_odd, lob_even));
+            low_order_bits = OP(_mm_bsrli_si128(low_order_bits, 4));
 
-            __m128i first8  = _mm_unpacklo_epi8(lob, high_order_bits);
-            first8  = _mm_srli_epi16(first8, 6);
+            __m128i first8  = OP(_mm_unpacklo_epi8(lob, high_order_bits));
+            first8  = OP(_mm_srli_epi16(first8, 6));
             _mm_store_si128((__m128i *)&dst[i*64 + j*16 + 0], first8);
 
-            __m128i second8 = _mm_unpackhi_epi8(lob, high_order_bits);
-            second8 = _mm_srli_epi16(second8, 6);
+            __m128i second8 = OP(_mm_unpackhi_epi8(lob, high_order_bits));
+            second8 = OP(_mm_srli_epi16(second8, 6));
             _mm_store_si128((__m128i *)&dst[i*64 + j*16 + 8], second8);
         }
     }
+
+    return ops;
 }
 
 /*
@@ -209,7 +219,8 @@ void convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
  *
  *     == 0 non-memory operations per 4 loads/5 stores
  */
-void convert_simd_8p2_pef10(uint8_t * dst, const uint8_t * src, size_t n) {
+int convert_simd_8p2_pef10(uint8_t * dst, const uint8_t * src, size_t n) {
+    int ops = 0;
     const size_t offs = ((n + 63)/64)*16;
     const uint8_t *dst8 = &dst[offs];
 
@@ -227,6 +238,8 @@ void convert_simd_8p2_pef10(uint8_t * dst, const uint8_t * src, size_t n) {
             _mm_store_si128((__m128i *)&dst8[i*64 + j*16], data);
         }
     }
+
+    return ops;
 }
 
 /*
@@ -236,9 +249,11 @@ void convert_simd_8p2_pef10(uint8_t * dst, const uint8_t * src, size_t n) {
  *
  *     == 0 non-memory operations per 4 loads/4 stores
  */
-void convert_simd_pef10_8p2(uint8_t * dst, const uint8_t * src, size_t n) {
+int convert_simd_pef10_8p2(uint8_t * dst, const uint8_t * src, size_t n) {
+    int ops = 0;
     const size_t offs = ((n + 63)/64)*16;
     const uint8_t *src8 = &src[offs];
 
     memcpy(dst, src8, n);
+    return ops;
 }
