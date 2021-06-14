@@ -25,3 +25,5 @@ size_t size_pef(size_t n);
 void convert_c_10p2_8p2(uint8_t * dst, const uint16_t * src, size_t n);
 void convert_c_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n);
 void convert_c_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n);
+void convert_c_8p2_pef10(uint8_t * dst, const uint8_t * src, size_t n);
+void convert_c_pef10_8p2(uint8_t * dst, const uint8_t * src, size_t n);

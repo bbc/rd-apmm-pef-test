@@ -43,6 +43,26 @@ int check_reuslt_10(const uint16_t *A, const uint16_t *B, size_t size, const cha
     }
 }
 
+int check_reuslt_8(const uint8_t *A, const uint8_t *B, size_t size, const char *name) {
+    if (memcmp(A, B, size) == 0) {
+        printf("[OK]    %s: Conversion matches expected value\n", name);
+        return 1;
+    } else {
+        printf("[ERROR] %s: Conversion does not match expected value!\n", name);
+        printf("expected: ");
+        for (int i=0; i < 16; i++) {
+            printf("0x%02x ", A[i]);
+        }
+        printf("\n");
+        printf("actual  : ");
+        for (int i=0; i < 16; i++) {
+            printf("0x%02x ", B[i]);
+        }
+        printf("\n");
+        return 0;
+    }
+}
+
 
 int main(int argc, char** argv) {
     const int width = 1920;
@@ -75,6 +95,39 @@ int main(int argc, char** argv) {
         free(result_10p2);
         free(tmp_pef);
     }
+
+    uint8_t *DATA_LINE_8P2 = calloc(size_8p2(width), 1);
+    convert_c_10p2_8p2(DATA_LINE_8P2, DATA_LINE_10P2, width);
+
+    {
+        uint8_t *DATA_LINE_PEF = calloc(size_pef(width), 1);
+        uint8_t *result_8p2 = calloc(size_8p2(width), 1);
+
+        convert_c_8p2_pef10(DATA_LINE_PEF, DATA_LINE_8P2, width);  // Perform a pure C conversion 8p2 -> PEF10
+        convert_simd_pef10_8p2(result_8p2, DATA_LINE_PEF, width);  // Convert the PEF10 back to 8P2 using unit under test
+
+        if (!check_reuslt_8(DATA_LINE_8P2, result_8p2, size_8p2(width), "convert_simd_pef10_8p2"))
+            rval = 1;
+
+        free(result_8p2);
+        free(DATA_LINE_PEF);
+    }
+
+    {
+        uint8_t *tmp_pef = calloc(size_pef(width), 1);
+        uint8_t *result_8p2 = calloc(size_8p2(width), 1);
+
+        convert_simd_8p2_pef10(tmp_pef, DATA_LINE_8P2, width);     // Convert 8p2 -> PEF10 using unit under test
+        convert_c_pef10_8p2(result_8p2, tmp_pef, width);           // Convert back to 8p2 using pure C implementation
+
+        if (!check_reuslt_8(DATA_LINE_8P2, result_8p2, size_8p2(width), "convert_simd_8p2_pef10"))
+            rval = 1;
+
+        free(result_8p2);
+        free(tmp_pef);
+    }
+
+    free(DATA_LINE_8P2);
 
     return rval;
 }

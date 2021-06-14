@@ -201,3 +201,44 @@ void convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
         }
     }
 }
+
+/*
+ *   This routine. Per 64 sample block:
+ *     4 x load
+ *     5 x store
+ *
+ *     == 0 non-memory operations per 4 loads/5 stores
+ */
+void convert_simd_8p2_pef10(uint8_t * dst, const uint8_t * src, size_t n) {
+    const size_t offs = ((n + 63)/64)*16;
+    const uint8_t *dst8 = &dst[offs];
+
+    const __m128i DUMMY_LSBs = _mm_set_epi8(
+        0xAA, 0xAA, 0xAA, 0xAA,
+        0xAA, 0xAA, 0xAA, 0xAA,
+        0xAA, 0xAA, 0xAA, 0xAA,
+        0xAA, 0xAA, 0xAA, 0xAA
+    );
+
+    for (int i = 0; i < (n + 63)/64; i++) {
+        _mm_store_si128((__m128i *)&dst[i*16], DUMMY_LSBs);
+        for (int j = 0; j < 4; j++) {
+            __m128i data = _mm_load_si128((__m128i *)&src[i*64 + j*16]);
+            _mm_store_si128((__m128i *)&dst8[i*64 + j*16], data);
+        }
+    }
+}
+
+/*
+ *   This routine. Per 64 sample block:
+ *     4 x load
+ *     4 x store
+ *
+ *     == 0 non-memory operations per 4 loads/4 stores
+ */
+void convert_simd_pef10_8p2(uint8_t * dst, const uint8_t * src, size_t n) {
+    const size_t offs = ((n + 63)/64)*16;
+    const uint8_t *src8 = &src[offs];
+
+    memcpy(dst, src8, n);
+}
