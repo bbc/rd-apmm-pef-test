@@ -25,15 +25,14 @@ void convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
 /*
  *   This routine. Per 64 sample block:
  *     5 x load
- *     8 x broadcast
  *     8 x mullo
- *     16 x srli
+ *     4 x slli
  *     8 x bsrli
- *     4 x pack
  *     8 x unpack
+ *     8 x srli
  *     8 x store
  *
- *     == 52 non-memory operations per 5 loads/8 stores
+ *     == 36 non-memory operations per 5 loads/8 stores
  */
 
 void convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
@@ -41,7 +40,17 @@ void convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
     const uint8_t *src8 = &src[offs];
 
     const __m128i MUL_SHIFT = _mm_set_epi16(
-        0x0040, 0x0010, 0x0004, 0x0001, 0x4000, 0x1000, 0x0400, 0x0100
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001
+    );
+
+    const __m128i SHUF_CTRL = _mm_set_epi16(
+        0x03FF, 0x03FF,
+        0x02FF, 0x02FF,
+        0x01FF, 0x01FF,
+        0x00FF, 0x00FF
     );
 
     for (int i = 0; i < (n + 63)/64; i++) {
@@ -50,17 +59,13 @@ void convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
         for (int j = 0; j < 4; j++) {
             __m128i high_order_bits = _mm_load_si128((__m128i *)&src8[i*64 + j*16]);
 
-            __m128i lob_first_8 = _mm_broadcastw_epi16(low_order_bits);
-            lob_first_8 = _mm_mullo_epi16(lob_first_8, MUL_SHIFT);
-            lob_first_8 = _mm_srli_epi16(lob_first_8, 8);
-            low_order_bits = _mm_bsrli_si128(low_order_bits, 2);
-
-            __m128i lob_second_8 = _mm_broadcastw_epi16(low_order_bits);
-            lob_second_8 = _mm_mullo_epi16(lob_second_8, MUL_SHIFT);
-            lob_second_8 = _mm_srli_epi16(lob_second_8, 8);
-            low_order_bits = _mm_bsrli_si128(low_order_bits, 2);
-
-            __m128i lob = _mm_packus_epi16(lob_first_8, lob_second_8);
+            __m128i lob = _mm_shuffle_epi8(low_order_bits, SHUF_CTRL);
+            __m128i lob_even = _mm_mullo_epi16(lob, MUL_SHIFT);
+            __m128i lob_odd = _mm_slli_epi16(lob, 2);
+            lob_odd = _mm_mullo_epi16(lob_odd, MUL_SHIFT);
+            lob_even = _mm_bsrli_si128(lob_even, 1);
+            lob = _mm_or_si128(lob_odd, lob_even);
+            low_order_bits = _mm_bsrli_si128(low_order_bits, 4);
 
             __m128i first8  = _mm_unpacklo_epi8(lob, high_order_bits);
             first8  = _mm_srli_epi16(first8, 6);
