@@ -19,7 +19,131 @@
  #include <x86intrin.h>
 
 
+/*
+ *   This routine. Per 64 sample block:
+ *     8 x load
+ *     8 x and
+ *     8 x pack
+ *     4 x shuffle
+ *     8 x srl
+ *     8 x unpack
+ *     3 x sll
+ *     3 x or
+ *     5 x store
+ *
+ *     == 42 non-memory operations per 8 loads/5 stores
+ */
 void convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
+    const size_t offs = ((n + 63)/64)*16;
+    const uint8_t *dst8 = &dst[offs];
+
+    const __m128i LSB_MASK = _mm_set_epi16(
+        0x0003, 0x0003, 0x0003, 0x0003,
+        0x0003, 0x0003, 0x0003, 0x0003
+    );
+
+    const __m128i SHUF_MASK = _mm_set_epi8(
+        0x0F, 0x0B, 0x07, 0x03, 0x0D, 0x09, 0x05, 0x01,
+        0x0E, 0x0A, 0x06, 0x02, 0x0C, 0x08, 0x04, 0x00
+    );
+
+    for (int i = 0; i < (n + 63)/64; i++) {
+        {
+            int j = 0;
+            __m128i lob0, lob1, lob2, lob3;
+            {
+                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
+                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
+
+                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
+                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
+
+                lob0 = _mm_packus_epi16(lob01, lob89);
+                lob0 = _mm_shuffle_epi8(lob0, SHUF_MASK);
+
+                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
+                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
+                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
+
+                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
+            }
+
+            j++;
+
+            {
+                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
+                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
+
+                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
+                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
+
+                lob1 = _mm_packus_epi16(lob01, lob89);
+                lob1 = _mm_shuffle_epi8(lob1, SHUF_MASK);
+
+                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
+                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
+                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
+
+                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
+            }
+
+            __m128i lobA = _mm_unpacklo_epi32(lob0, lob1);
+            __m128i lobB = _mm_unpackhi_epi32(lob0, lob1);
+
+            j++;
+
+            {
+                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
+                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
+
+                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
+                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
+
+                lob2 = _mm_packus_epi16(lob01, lob89);
+                lob2 = _mm_shuffle_epi8(lob2, SHUF_MASK);
+
+                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
+                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
+                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
+
+                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
+            }
+
+            j++;
+
+            {
+                __m128i first_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 0]);
+                __m128i second_eight = _mm_load_si128((__m128i *)&src[i*64 + j*16 + 8]);
+
+                __m128i lob01 = _mm_and_si128(first_eight, LSB_MASK);
+                __m128i lob89 = _mm_and_si128(second_eight, LSB_MASK);
+
+                lob3 = _mm_packus_epi16(lob01, lob89);
+                lob3 = _mm_shuffle_epi8(lob3, SHUF_MASK);
+
+                __m128i first_eight_hob = _mm_srli_epi16(first_eight, 2);
+                __m128i second_eight_hob = _mm_srli_epi16(second_eight, 2);
+                __m128i hob = _mm_packus_epi16(first_eight_hob, second_eight_hob);
+
+                _mm_store_si128((__m128i *)&dst8[i*64 + j*16], hob);
+            }
+
+            __m128i lobC = _mm_unpacklo_epi32(lob2, lob3);
+            __m128i lobD = _mm_unpackhi_epi32(lob2, lob3);
+
+            lob0 = _mm_unpacklo_epi64(lobA, lobC);
+            lob1 = _mm_unpacklo_epi64(lobB, lobD);
+            lob2 = _mm_unpackhi_epi64(lobA, lobC);
+            lob3 = _mm_unpackhi_epi64(lobB, lobD);
+
+            lob0 = _mm_slli_epi16(lob0, 6);
+            lob1 = _mm_slli_epi16(lob1, 4);
+            lob2 = _mm_slli_epi16(lob2, 2);
+
+            __m128i lob = _mm_or_si128(_mm_or_si128(lob0, lob1), _mm_or_si128(lob2, lob3));
+            _mm_store_si128((__m128i *)&dst[i*16], lob);
+        }
+    }
 }
 
 /*
