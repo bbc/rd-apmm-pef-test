@@ -21,6 +21,7 @@
 
 #include "data.h"
 #include "convert_c.h"
+#include "convert_simd.h"
 
 
 int main(int argc, char** argv) {
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
     uint16_t *result_10p2 = malloc(size_10p2(width));
 
     convert_c_10p2_pef10(DATA_LINE_PEF, DATA_LINE_10P2, width);
-    convert_c_pef10_10p2(result_10p2, DATA_LINE_PEF, width);
+    convert_simd_pef10_10p2(result_10p2, DATA_LINE_PEF, width);
 
     if (memcmp(DATA_LINE_10P2, result_10p2, size_10p2(width)) == 0) {
         printf("[OK]    Conversion matches expected value\n");
