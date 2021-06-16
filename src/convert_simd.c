@@ -159,11 +159,12 @@ int convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n) {
  *     8 x mullo
  *     4 x slli
  *     8 x bsrli
+ *     4 x or
  *     8 x unpack
  *     8 x srli
  *     8 x store
  *
- *     == 36 non-memory operations per 5 loads/8 stores
+ *     == 40 non-memory operations per 5 loads/8 stores
  */
 
 int convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
@@ -221,12 +222,13 @@ int convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
  *     4 x mullo
  *     2 x slli
  *     2 x bsrli
+ *     2 x or
  *     4 x unpack
- *     4 x srli
+ *     6 x srli
  *     4 x permute
  *     4 x store
  *
- *     == 23 non-memory operations per 3 loads/4 stores
+ *     == 27 non-memory operations per 3 loads/4 stores
  */
 
 int convert_simd256_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
@@ -281,6 +283,107 @@ int convert_simd256_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
             tmp = OP(_mm256_permute2f128_si256(first8, second8, 0x31));
             _mm256_storeu_si256((__m256i *)&dst[i*64 + j*16 + 16], tmp);
         }
+    }
+
+    return ops;
+}
+
+/*
+ *   This routine. Per 64 sample block:
+ *     2 x load
+ *     1 x broadcast
+ *     1 x shuffle
+ *     2 x mullo
+ *     1 x slli
+ *     1 x bsrli
+ *     1 x or
+ *     2 x unpack
+ *     2 x srli
+ *     2 x permute
+ *     2 x store
+ *
+ *     == 13 non-memory operations per 2 loads/2 stores
+ */
+
+int convert_simd512_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
+    int ops = 0;
+    const size_t offs = ((n + 63)/64)*16;
+    const uint8_t *src8 = &src[offs];
+
+    const __m512i MUL_SHIFT = _mm512_set_epi32(
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001,
+        0x00100001
+    );
+
+    const __m512i SHUF_CTRL = _mm512_set_epi32(
+        0x0FFF0FFF,
+        0x0EFF0EFF,
+        0x0DFF0DFF,
+        0x0CFF0CFF,
+        0x0BFF0BFF,
+        0x0AFF0AFF,
+        0x09FF09FF,
+        0x08FF08FF,
+        0x07FF07FF,
+        0x06FF06FF,
+        0x05FF05FF,
+        0x04FF04FF,
+        0x03FF03FF,
+        0x02FF02FF,
+        0x01FF01FF,
+        0x00FF00FF
+    );
+
+    const __m512i PERM_MASK1 = _mm512_set_epi64(
+        0xB, 0xA,
+        0x3, 0x2,
+        0x9, 0x8,
+        0x1, 0x0
+    );
+
+    const __m512i PERM_MASK2 = _mm512_set_epi64(
+        0xF, 0xE,
+        0x7, 0x6,
+        0xD, 0xC,
+        0x5, 0x4
+    );
+
+    for (int i = 0; i < (n + 63)/64; i++) {
+        __m512i low_order_bits = OP(_mm512_broadcast_i32x4(_mm_load_si128((__m128i *)&src[i*16])));
+        __m512i high_order_bits = _mm512_load_si512((__m512i *)&src8[i*64]);
+
+        __m512i lob = OP(_mm512_shuffle_epi8(low_order_bits, SHUF_CTRL));
+        __m512i lob_even = OP(_mm512_mullo_epi16(lob, MUL_SHIFT));
+        __m512i lob_odd = OP(_mm512_slli_epi16(lob, 2));
+        lob_odd = OP(_mm512_mullo_epi16(lob_odd, MUL_SHIFT));
+        lob_even = OP(_mm512_bsrli_epi128(lob_even, 1));
+        lob = OP(_mm512_or_si512(lob_odd, lob_even));
+
+        __m512i first8  = OP(_mm512_unpacklo_epi8(lob, high_order_bits));
+        first8  = OP(_mm512_srli_epi16(first8, 6));
+        __m512i second8 = OP(_mm512_unpackhi_epi8(lob, high_order_bits));
+        second8 = OP(_mm512_srli_epi16(second8, 6));
+
+        __m512i tmp;
+        tmp = OP(_mm512_permutex2var_epi64(first8, PERM_MASK1, second8));
+        _mm512_storeu_si512((__m512i *)&dst[i*64 + 0], tmp);
+
+        tmp = OP(_mm512_permutex2var_epi64(first8, PERM_MASK2, second8));
+        _mm512_storeu_si512((__m512i *)&dst[i*64 + 32], tmp);
     }
 
     return ops;

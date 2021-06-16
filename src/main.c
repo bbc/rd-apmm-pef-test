@@ -97,6 +97,20 @@ int main(int argc, char** argv) {
     }
 
     {
+        uint8_t *DATA_LINE_PEF = calloc(size_pef(width), 1);
+        uint16_t *result_10p2 = calloc(size_10p2(width), 1);
+
+        convert_c_10p2_pef10(DATA_LINE_PEF, DATA_LINE_10P2, width);  // Perform a pure C conversion 10p2 -> PEF10
+        int ops = convert_simd512_pef10_10p2(result_10p2, DATA_LINE_PEF, width);  // Convert the PEF10 back to 10P2 using unit under test
+
+        if (!check_reuslt_10(DATA_LINE_10P2, result_10p2, size_10p2(width), "convert_simd512_pef10_10p2", ((float)ops)/width))
+            rval = 1;
+
+        free(result_10p2);
+        free(DATA_LINE_PEF);
+    }
+
+    {
         uint8_t *tmp_pef = calloc(size_pef(width), 1);
         uint16_t *result_10p2 = calloc(size_10p2(width), 1);
 

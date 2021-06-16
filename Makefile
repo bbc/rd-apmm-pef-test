@@ -16,7 +16,7 @@ SOURCES=$(wildcard src/*.c)
 HEADERS=$(wildcard src/*.h)
 OBJS=$(patsubst %.c,%.o,${SOURCES})
 
-CFLAGS=-g -msse -msse2 -msse3 -msse4 -mavx -mavx2
+CFLAGS=-g -msse -msse2 -msse3 -msse4 -mavx -mavx2 -mavx512f -mavx512bw -mavx512dq -mavx512vl -Og
 LDFLAGS=
 
 all: pef-test
