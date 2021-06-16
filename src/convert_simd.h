@@ -20,5 +20,7 @@
 int convert_simd_10p2_pef10(uint8_t * dst, const uint16_t * src, size_t n);
 int convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n);
 
+int convert_simd256_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n);
+
 int convert_simd_8p2_pef10(uint8_t * dst, const uint8_t * src, size_t n);
 int convert_simd_pef10_8p2(uint8_t * dst, const uint8_t * src, size_t n);

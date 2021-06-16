@@ -212,6 +212,80 @@ int convert_simd_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
     return ops;
 }
 
+
+/*
+ *   This routine. Per 64 sample block:
+ *     3 x load
+ *     1 x broadcast
+ *     2 x shuffle
+ *     4 x mullo
+ *     2 x slli
+ *     2 x bsrli
+ *     4 x unpack
+ *     4 x srli
+ *     4 x permute
+ *     4 x store
+ *
+ *     == 23 non-memory operations per 3 loads/4 stores
+ */
+
+int convert_simd256_pef10_10p2(uint16_t * dst, const uint8_t * src, size_t n) {
+    int ops = 0;
+    const size_t offs = ((n + 63)/64)*16;
+    const uint8_t *src8 = &src[offs];
+
+    const __m256i MUL_SHIFT = _mm256_set_epi16(
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001,
+        0x0010, 0x0001
+    );
+
+    const __m256i SHUF_CTRL = _mm256_set_epi16(
+        0x07FF, 0x07FF,
+        0x06FF, 0x06FF,
+        0x05FF, 0x05FF,
+        0x04FF, 0x04FF,
+        0x03FF, 0x03FF,
+        0x02FF, 0x02FF,
+        0x01FF, 0x01FF,
+        0x00FF, 0x00FF
+    );
+
+    for (int i = 0; i < (n + 63)/64; i++) {
+        __m256i low_order_bits = OP(_mm256_broadcastsi128_si256(_mm_load_si128((__m128i *)&src[i*16])));
+
+        for (int j = 0; j < 4; j+=2) {
+            __m256i high_order_bits = _mm256_load_si256((__m256i *)&src8[i*64 + j*16]);
+
+            __m256i lob = OP(_mm256_shuffle_epi8(low_order_bits, SHUF_CTRL));
+            __m256i lob_even = OP(_mm256_mullo_epi16(lob, MUL_SHIFT));
+            __m256i lob_odd = OP(_mm256_slli_epi16(lob, 2));
+            lob_odd = OP(_mm256_mullo_epi16(lob_odd, MUL_SHIFT));
+            lob_even = OP(_mm256_srli_si256(lob_even, 1));
+            lob = OP(_mm256_or_si256(lob_odd, lob_even));
+            low_order_bits = OP(_mm256_bsrli_epi128(low_order_bits, 8));
+
+            __m256i first8  = OP(_mm256_unpacklo_epi8(lob, high_order_bits));
+            first8  = OP(_mm256_srli_epi16(first8, 6));
+            __m256i second8 = OP(_mm256_unpackhi_epi8(lob, high_order_bits));
+            second8 = OP(_mm256_srli_epi16(second8, 6));
+
+            __m256i tmp = OP(_mm256_permute2f128_si256(first8, second8, 0x20));
+            _mm256_storeu_si256((__m256i *)&dst[i*64 + j*16 + 0], tmp);
+
+            tmp = OP(_mm256_permute2f128_si256(first8, second8, 0x31));
+            _mm256_storeu_si256((__m256i *)&dst[i*64 + j*16 + 16], tmp);
+        }
+    }
+
+    return ops;
+}
+
 /*
  *   This routine. Per 64 sample block:
  *     4 x load
